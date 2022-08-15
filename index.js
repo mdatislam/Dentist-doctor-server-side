@@ -47,6 +47,13 @@ async function run() {
       res.send(services)
     })
 
+    app.get('/appointmentList', async(req,res)=>{
+      const email = req.query.email 
+      const filter ={patientEmail:email}
+      const result = await bookingCollection.find(filter).toArray()
+      res.send(result)
+    })
+
    app.post("/booking", async(req,res)=>{
     const booking = req.body
     const query = {treatmentName:booking.treatmentName, patientEmail:booking.patientEmail,date:booking.date}
