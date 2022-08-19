@@ -2,6 +2,7 @@ const express = require("express");
 const app = express();
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const cors = require("cors");
+const jwt = require('jsonwebtoken');
 require("dotenv").config();
 const port = process.env.PORT || 5000;
 
@@ -17,6 +18,24 @@ const client = new MongoClient(uri, {
 });
 //console.log('connect with db')
 
+function verifyjwt(req,res,next){
+  const authHeader= req.headers.authorization
+  //console.log(authHeader)
+  if(!authHeader){
+    return res.status(401).send({message:"unauthorize access"})
+  }
+  const token = authHeader.split(" ")[1]
+
+  jwt.verify(token,process.env.ACCESS_TOKEN, function(err, decoded) {
+    if(err){
+      return res.status(403).send({message:"access forbidden"})
+    }
+    req.decoded=decoded
+    next()
+  
+  });
+}
+
 async function run() {
   try {
     await client.connect();
@@ -26,7 +45,7 @@ async function run() {
     const bookingCollection = client.db("Dentist-doctor").collection("booking");
     const userCollection = client.db("Dentist-doctor").collection("user");
 
-    app.get("/services", async (req, res) => {
+    app.get("/services",verifyjwt,async (req, res) => {
       const result = await serviceCollection.find({}).toArray();
       res.send(result);
     });
@@ -47,11 +66,18 @@ async function run() {
       res.send(services)
     })
 
-    app.get('/appointmentList', async(req,res)=>{
+    app.get('/appointmentList',verifyjwt, async(req,res)=>{
       const email = req.query.email 
+     const requesterEmail = req.decoded.email
+     //console.log(requesterEmail,email)
+     if(email === requesterEmail){
       const filter ={patientEmail:email}
       const result = await bookingCollection.find(filter).toArray()
-      res.send(result)
+     return res.send(result)
+     }
+     else {
+      return res.status(403).send({ message: 'forbidden access' });
+    }
     })
 
    app.post("/booking", async(req,res)=>{
@@ -64,6 +90,21 @@ async function run() {
     }
     const result = await bookingCollection.insertOne(booking)
    return res.send({success:true,booking})
+   })
+   app.put('/user/:email', async(req,res)=>{
+    const email = req.params.email
+    const user = req.body
+    const option = {upsert:true}
+    const filter = {email:email}
+    const updateDoc={
+      $set:user
+    }
+    const result = await userCollection.updateOne(filter,updateDoc,option)
+    const token = jwt.sign({
+     email:email
+    }, process.env.ACCESS_TOKEN, { expiresIn: '1h' });
+    
+    res.send({result,token})
    })
 
    app.post("/user", async(req,res)=>{
