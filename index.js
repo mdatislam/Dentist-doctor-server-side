@@ -18,7 +18,7 @@ const client = new MongoClient(uri, {
 });
 //console.log('connect with db')
 
-function verifyjwt(req,res,next){
+function verifyJWT(req,res,next){
   const authHeader= req.headers.authorization
   //console.log(authHeader)
   if(!authHeader){
@@ -45,7 +45,7 @@ async function run() {
     const bookingCollection = client.db("Dentist-doctor").collection("booking");
     const userCollection = client.db("Dentist-doctor").collection("user");
 
-    app.get("/services",verifyjwt,async (req, res) => {
+    app.get("/services",verifyJWT,async (req, res) => {
       const result = await serviceCollection.find({}).toArray();
       res.send(result);
     });
@@ -66,10 +66,10 @@ async function run() {
       res.send(services)
     })
 
-    app.get('/appointmentList',verifyjwt, async(req,res)=>{
+    app.get('/appointmentList',verifyJWT, async(req,res)=>{
       const email = req.query.email 
      const requesterEmail = req.decoded.email
-     //console.log(requesterEmail,email)
+    // console.log(requesterEmail,email)
      if(email === requesterEmail){
       const filter ={patientEmail:email}
       const result = await bookingCollection.find(filter).toArray()
@@ -110,6 +110,37 @@ async function run() {
    app.post("/user", async(req,res)=>{
     const user = req.body
     const result = await userCollection.insertOne(user)
+    res.send(result)
+   })
+
+   app.get('/admin/:email',verifyJWT,async(req,res)=>{
+    const email = req.params.email
+    const user = await userCollection.findOne({email:email})
+    const isAdmin = user.role==='admin'
+    res.send({admin:isAdmin})
+   })
+
+
+   app.put('/user/admin/:email',verifyJWT,async(req,res)=>{
+    const email = req.params.email;
+    const requesterEmail = req.decoded.email
+    const query = {email:requesterEmail}
+    const requesterAccount = await userCollection.findOne(query)
+    if(requesterAccount.role==='admin'){
+      const filter = {email:email}
+    const updateDoc = {
+      $set:{role:'admin'}
+    }
+    const result = await userCollection.updateOne(filter,updateDoc)
+    res.send(result)
+    }
+    else{
+      return res.status(403).send({message: 'you are not admin'})
+    }
+   })
+
+   app.get('/users',verifyJWT, async(req,res)=>{
+    const result = await userCollection.find().toArray()
     res.send(result)
    })
 
