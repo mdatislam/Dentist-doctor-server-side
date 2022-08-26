@@ -132,11 +132,28 @@ async function run() {
     const result = await userCollection.insertOne(user)
     res.send(result)
    })
+
    app.post("/doctorInfo",verifyJWT,verifyAdmin, async(req,res)=>{
     const user = req.body
     //console.log(user)
     const result = await doctorCollection.insertOne(user)
     res.send(result)
+   })
+
+   app.put('/doctor/update/:email',async(req,res)=>{
+    const email= req.params.email 
+    const updateInfo = req.body
+    const filter = {email:email}
+    const option = {upsert:true}
+    const updateDoc ={
+      $set:{
+        serviceName:updateInfo.serviceName,
+        preService:updateInfo.preService
+      }
+    }
+    const result = await doctorCollection.updateOne(filter,updateDoc,option)
+    res.send(result)
+
    })
 
    // Doctor List API
