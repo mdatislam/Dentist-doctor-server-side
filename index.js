@@ -6,6 +6,8 @@ const jwt = require('jsonwebtoken');
 require("dotenv").config();
 const port = process.env.PORT || 5000;
 
+//https://floating-earth-43239.herokuapp.com
+
 app.use(cors());
 app.use(express.json());
 
@@ -44,12 +46,30 @@ async function run() {
       .collection("services");
     const bookingCollection = client.db("Dentist-doctor").collection("booking");
     const userCollection = client.db("Dentist-doctor").collection("user");
+    const doctorCollection = client.db("Dentist-doctor").collection("doctor");
+
+    // verify admin API
+    const verifyAdmin = async(req,res,next)=>{
+      const requesterEmail = req.decoded.email
+    const query = {email:requesterEmail}
+    const requesterAccount = await userCollection.findOne(query)
+    if(requesterAccount.role==='admin'){
+      next()
+    }
+    else {
+      return res.status(403).send({ message: 'forbidden access' });
+    }
+    }
 
     app.get("/services",verifyJWT,async (req, res) => {
       const result = await serviceCollection.find({}).toArray();
       res.send(result);
     });
 
+    app.get("/servicesName",async (req, res) => {
+      const result = await serviceCollection.find({}).project({name:1}).toArray();
+      res.send(result);
+    });
 
     app.get("/available", async(req,res)=>{
       const date = req.query.date || "Aug 14, 2022"
@@ -112,6 +132,27 @@ async function run() {
     const result = await userCollection.insertOne(user)
     res.send(result)
    })
+   app.post("/doctorInfo",verifyJWT,verifyAdmin, async(req,res)=>{
+    const user = req.body
+    //console.log(user)
+    const result = await doctorCollection.insertOne(user)
+    res.send(result)
+   })
+
+   // Doctor List API
+
+   app.get('/doctorList', async(req,res)=>{
+    const doctorList = await doctorCollection.find().toArray()
+    res.send(doctorList)
+   })
+
+   app.delete('/doctor/delete/:email',verifyJWT,async(req,res)=>{
+     const doctorEmail = req.params.email 
+     //console.log(doctorEmail)
+     const filter = {email:doctorEmail}
+     const deleteDoctor = await doctorCollection.deleteOne(filter)
+     res.send(deleteDoctor)
+   })
 
    app.get('/admin/:email',verifyJWT,async(req,res)=>{
     const email = req.params.email
@@ -121,22 +162,15 @@ async function run() {
    })
 
 
-   app.put('/user/admin/:email',verifyJWT,async(req,res)=>{
+   app.put('/user/admin/:email',verifyJWT,verifyAdmin,async(req,res)=>{
     const email = req.params.email;
-    const requesterEmail = req.decoded.email
-    const query = {email:requesterEmail}
-    const requesterAccount = await userCollection.findOne(query)
-    if(requesterAccount.role==='admin'){
       const filter = {email:email}
     const updateDoc = {
-      $set:{role:'admin'}
-    }
+      $set:{role:'admin'}}
     const result = await userCollection.updateOne(filter,updateDoc)
     res.send(result)
-    }
-    else{
-      return res.status(403).send({message: 'you are not admin'})
-    }
+    
+   
    })
 
    app.get('/users',verifyJWT, async(req,res)=>{
