@@ -1,6 +1,7 @@
 const express = require("express");
+
 const app = express();
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const cors = require("cors");
 const jwt = require('jsonwebtoken');
 require("dotenv").config();
@@ -61,7 +62,7 @@ async function run() {
     }
     }
 
-    app.get("/services",verifyJWT,async (req, res) => {
+    app.get("/services",async (req, res) => {
       const result = await serviceCollection.find({}).toArray();
       res.send(result);
     });
@@ -72,7 +73,7 @@ async function run() {
     });
 
     app.get("/available", async(req,res)=>{
-      const date = req.query.date || "Aug 14, 2022"
+      const date = req.query.date || "Aug 27, 2022"
       const filter ={date:date}
       const services = await serviceCollection.find().toArray()
       const bookingServices = await bookingCollection.find(filter).toArray()
@@ -111,6 +112,14 @@ async function run() {
     const result = await bookingCollection.insertOne(booking)
    return res.send({success:true,booking})
    })
+
+   app.get('/payment/:id', async(req,res)=>{
+    const id = req.params.id
+    const filter ={_id:ObjectId(id)}
+    const result = await bookingCollection.findOne(filter)
+    res.send(result)
+
+  })
    app.put('/user/:email', async(req,res)=>{
     const email = req.params.email
     const user = req.body
