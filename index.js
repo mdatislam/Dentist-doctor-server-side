@@ -6,6 +6,7 @@ const cors = require("cors");
 const jwt = require('jsonwebtoken');
 require("dotenv").config();
 const port = process.env.PORT || 5000;
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY)
 
 //https://floating-earth-43239.herokuapp.com
 
@@ -87,6 +88,7 @@ async function run() {
       res.send(services)
     })
 
+
     app.get('/appointmentList',verifyJWT, async(req,res)=>{
       const email = req.query.email 
      const requesterEmail = req.decoded.email
@@ -111,6 +113,21 @@ async function run() {
     }
     const result = await bookingCollection.insertOne(booking)
    return res.send({success:true,booking})
+   })
+
+   //Payment API Making
+
+   app.post('/create-payment-intent',verifyJWT,async(req,res)=>{
+    const service = req.body
+    const price = service.price
+    const amount = price*100
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount,
+      currency: "usd",
+      payment_method_types:['card']
+    });
+
+    res.send({clientSecret: paymentIntent.client_secret})
    })
 
    app.get('/payment/:id', async(req,res)=>{
