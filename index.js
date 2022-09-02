@@ -49,6 +49,7 @@ async function run() {
     const bookingCollection = client.db("Dentist-doctor").collection("booking");
     const userCollection = client.db("Dentist-doctor").collection("user");
     const doctorCollection = client.db("Dentist-doctor").collection("doctor");
+    const paymentCollection= client.db("Dentist-doctor").collection("payment");
 
     // verify admin API
     const verifyAdmin = async(req,res,next)=>{
@@ -137,6 +138,23 @@ async function run() {
     res.send(result)
 
   })
+
+  app.patch('/paymentDone/:id', verifyJWT, async(req, res) =>{
+    const id  = req.params.id;
+    const payment = req.body;
+    const filter = {_id: ObjectId(id)};
+    const updatedDoc = {
+      $set: {
+        paid: true,
+        transactionId: payment.transactionId
+      }
+    }
+
+    const result = await paymentCollection.insertOne(payment);
+    const updatedBooking = await bookingCollection.updateOne(filter, updatedDoc);
+    res.send(updatedBooking);
+  })
+
    app.put('/user/:email', async(req,res)=>{
     const email = req.params.email
     const user = req.body
